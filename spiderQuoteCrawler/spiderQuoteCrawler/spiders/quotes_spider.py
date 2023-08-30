@@ -1,13 +1,26 @@
 import scrapy
+from scrapy import Spider
+from scrapy.http import FormRequest
 
 
-class QuotesSpider(scrapy.Spider):
+
+
+class QuotesSpider(Spider):
     name = "quotes"
-    start_urls = [
-        "https://quotes.toscrape.com/page/1/",
-    ]
+    def start_requests(self):
+        login_url = 'http://quotes.toscrape.com/login'
+        yield scrapy.Request(login_url, callback=self.login)
+    
+    def login(self, response):
+        token = response.css("form input[name=csrf_token]::attr(value)").extract_first()
+        return FormRequest.from_response(response,
+                                         formdata={'csrf_token': token,
+                                                   'password': 'senha',
+                                                   'username': 'usuario'},
+                                         callback=self.parse)
 
     def parse(self, response):
+        
         for quote in response.css("div.quote"):
             if ("truth" in quote.css("span.text::text").get()) or ("Mark Twain" in  quote.css("span small::text").get() and "life" in quote.css("div.tags a.tag::text").getall()):
                 yield {
